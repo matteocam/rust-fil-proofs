@@ -4,9 +4,9 @@ use std::marker::PhantomData;
 use blstrs::Scalar as Fr;
 use ff::PrimeField;
 use generic_array::typenum::{U0, U11, U16, U2, U24, U36, U4, U8};
+use halo2_proofs::pasta::{Fp, Fq};
 use lazy_static::lazy_static;
 use neptune::{poseidon::PoseidonConstants, Arity};
-use pasta_curves::{Fp, Fq};
 use typemap::ShareMap;
 
 pub type PoseidonBinaryArity = U2;
