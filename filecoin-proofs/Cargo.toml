@@ -85,3 +85,7 @@ harness = false
 [[bench]]
 name = "aggregation"
 harness = false
+
+[[bin]]
+name = "merkle_measure"
+path = "src/merkle_measure.rs"
