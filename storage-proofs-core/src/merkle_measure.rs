@@ -1,6 +1,9 @@
 use filecoin_hashers::{poseidon::PoseidonHasher, Hasher}; 
 use merkletree::store::VecStore; 
 
+use std::time::Instant;
+use std::env;
+
 use generic_array::typenum::{Unsigned, U0, U2, U4, U8};  
 use storage_proofs_core::merkle::MerkleProof;
 
@@ -50,21 +53,35 @@ impl MyCircuit {
     }
 }
 
+
 fn main() {
     // Set your tree type; you can change the hasher and arity.
     type Tree = MerkleTreeWrapper<PoseidonHasher, VecStore<<PoseidonHasher as Hasher>::Domain>, U2, U0, U0>;
 
     // Set your tree size.
-    let num_leafs = 8; // TODO: set to appropriate number 2**27 at most
+    let args: Vec<String> = env::args().collect();
+    let mut num_leaves:usize = 8; // TODO: set to appropriate number 2**27 at most
+
+    let mut num_chals:usize = 1 << 16; 
+
+    if args.len() >= 3 {
+        let log_leaves:usize = args[1].parse().unwrap();
+        num_leaves = 1 << log_leaves;
+        let log_chals:usize = args[2].parse().unwrap();
+        num_chals = 1 << log_chals;
+    } 
+
+    println!("Using num_leaves = {}", num_leaves);
+    println!("Using num_chals = {}", num_chals);
 
     // Set your Merkle challenges; each element of the vector is the index of a leaf,
     // i.e. an integer in `0..num_laefs`, whose Merkle proof the circuit verifies.
-    let challenges = vec![];
+    let challenges:Vec<usize> = (0..num_chals).collect();
 
     // Create the Groth16 CRS for this circuit.
     let params = {
         let mut rng = XorShiftRng::from_seed(TEST_SEED);
-        let (_leafs, tree) = generate_tree::<Tree, _>(&mut rng, num_leafs, None);
+        let (_leafs, tree) = generate_tree::<Tree, _>(&mut rng, num_leaves, None);
         let circ = MyCircuit {
             tree,
             challenges: challenges.clone(),
@@ -77,7 +94,7 @@ fn main() {
 
     // Instantiate a circuit using the same tree that was used above.
     let mut rng = XorShiftRng::from_seed(TEST_SEED);
-    let (_leafs, tree) = generate_tree::<Tree, _>(&mut rng, num_leafs, None);
+    let (_leafs, tree) = generate_tree::<Tree, _>(&mut rng, num_leaves, None);
     let circ = MyCircuit {
         tree,
         challenges,
@@ -86,7 +103,12 @@ fn main() {
 
     // Create a Groth16 proof.
     let mut rng = XorShiftRng::from_seed(TEST_SEED);
+
+    let start = Instant::now();
     let proof = create_random_proof(circ, &params, &mut rng).unwrap();
+    let prf_time = start.elapsed().as_secs_f32();
+    println!("\t\t Time for Merkle proof ({}, {}): {}", num_leaves, num_chals, prf_time);
+
 
     // Verify proof.
     assert!(verify_proof(&pvk, &proof, &pub_inputs).unwrap());
